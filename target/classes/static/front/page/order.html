@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0,user-scalable=no,minimal-ui">
+        <title>美食元素</title>
+        <link rel="icon" href="./../images/favico.ico">
+        <!--不同屏幕尺寸根字体设置-->
+        <script src="./../js/base.js"></script>
+        <!--element-ui的样式-->
+        <link rel="stylesheet" href="../../backend/plugins/element-ui/index.css" />
+        <!-- 引入样式  -->
+        <link rel="stylesheet" href="../styles/index.css" />
+        <!--引入vant样式-->
+        <link rel="stylesheet" href="../styles/vant.min.css"/>
+        <!--本页面内容的样式-->
+        <link rel="stylesheet" href="./../styles/order.css" />
+        <style>
+
+            .delete-button {
+                height: 100%;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="order" class="app">
+            <div class="divHead">
+                <div class="divTitle">
+                    <i class="el-icon-arrow-left" @click="goBack"></i>美食元素
+                </div>
+            </div>
+            <div class="divBody" v-if="orderList.length > 0">
+
+                <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
+                <van-list
+                    v-model="loading"
+                    :finished="finished"
+                    finished-text="没有更多了"
+                    @load="getList"
+                    >
+                    <van-cell v-for="(order,index) in orderList" :key="index" class="item">
+                        <van-swipe-cell  :before-close="beforeClose">
+                        <div class="timeStatus">
+                            <span>{{order.orderTime}}</span>
+                            <span>{{getStatus(order.status)}}</span>
+                            <!-- <span>正在派送</span> -->
+                        </div>
+                        <div class="dishList">
+                            <van-steps :active="order.status" active-icon="success" active-color="#38f">
+                                <van-step>买家下单</van-step>
+                                <van-step>商家接单</van-step>
+                                <van-step>骑手派送</van-step>
+                                <van-step>订单完成</van-step>
+                            </van-steps>
+                            <div v-for="(item,index) in order.orderDetails" :key="index" class="item">
+                                <span>{{item.name}}</span>
+                                <span>x{{item.number}}</span>
+                            </div>
+                        </div>
+                        <div class="result">
+                            <span>共{{order.sumNum}} 件商品,实付</span><span class="price">￥{{order.amount}}</span>
+                        </div>
+                        <div class="btn" v-if="order.status === 4">
+                            <div class="btnAgain" @click="addOrderAgain(order)">再来一单</div>
+                        </div  >
+                            <template  #right>
+                                <van-button square text="删除"  type="danger" class="delete-button"  @click="deleteOrder(order.id)" />
+                            </template>
+                        </van-swipe-cell>
+                    </van-cell>
+                </van-list>
+                </van-pull-refresh>
+            </div>
+            <div class="divNoData" v-else>
+                <div class="divContainer">
+                    <img src="./../images/no_order.png"/>
+                    <div>暂无订单</div>
+                </div>
+            </div>
+            <van-tabbar v-model="active">
+                <van-tabbar-item url="../index.html">
+                    <span>点餐</span>
+                    <template #icon="props">
+                        <img src="../images/order.png" />
+                    </template>
+                </van-tabbar-item>
+                <van-tabbar-item url="order.html">
+                    <span>订单</span>
+                    <template #icon="props">
+                        <img src="../images/orderList.png" />
+                    </template>
+                </van-tabbar-item>
+                <van-tabbar-item url="user.html">
+                    <span>我的</span>
+                    <template #icon="props">
+                        <img src="../images/my.png" />
+                    </template>
+                </van-tabbar-item>
+            </van-tabbar>
+        </div>
+        <!-- 开发环境版本，包含了有帮助的命令行警告 -->
+        <script src="../../backend/plugins/vue/vue.js"></script>
+        <!-- 引入组件库 -->
+        <script src="../../backend/plugins/element-ui/index.js"></script>
+        <!-- 引入vant组件 -->
+        <script src="./../js/vant.min.js"></script>    
+        <!-- 引入axios -->
+        <script src="../../backend/plugins/axios/axios.min.js"></script>
+        <script src="./../js/request.js"></script>
+        <script src="./../api/order.js"></script>
+        <script>
+        new Vue({
+            el:"#order",
+            data(){
+                return {
+                    active: 1,
+                    paging:{
+                        page:1,
+                        pageSize:5
+                    },
+                    orderList:[],
+                    loading:false,
+                    finished:false,
+                    refreshing: false,
+                    orderId:'',
+                }
+            },
+            computed:{},
+            created(){
+                this.initData()
+            },
+            mounted(){},
+            methods:{
+                onLoad(){
+                    setTimeout(() => {
+                        if (this.refreshing) {
+                            this.orderList = [];
+                            this.refreshing = false;
+                        }
+
+                        this.paging.page = 1;
+                        this.getList()
+                        this.$toast.success('刷新成功');
+                        //this.$notify({ type:'success', message:'刷新成功'});
+                    },1000);
+                },
+                goBack(){
+                    const url = document.referrer
+                    //表示是从订单页面跳转过来的
+                    if(url.includes('success')){
+                        window.requestAnimationFrame(()=>{
+                                window.location.href= '/front/index.html'
+                        })   
+                    }else{
+                        history.go(-1)
+                    }
+                },
+                initData(){
+                    this.getList()
+                },
+                async getList(){
+                    if(this.finished){
+                        this.loading = false;
+                        return
+                    }
+                    const res = await orderPagingApi(this.paging)
+                    if(res.code === 1){
+                        this.orderList.push(...res.data.records)
+                        let records = res.data.records
+                        if(records && Array.isArray(records)){
+                            records.forEach(item=>{
+                                let number = 0
+                                item.orderDetails.forEach(ele=>{
+                                    number += ele.number
+                                })
+                                item.sumNum = number
+                            })
+                            this.loading = false;
+                        }
+                        if(this.paging.page >= res.data.pages){
+                            this.finished = true;
+                        }
+                        this.paging.page = this.paging.page + 1
+                    }else{
+                        this.$notify({ type:'danger', message:res.msg});
+                    }
+                },
+                onRefresh() {
+                    // 清空列表数据
+                    console.log("正在刷新")
+                    this.finished = false;
+
+                    // 重新加载数据
+                    // 将 loading 设置为 true，表示处于加载状态
+                    this.loading = true;
+                    console.log("正在调用onload")
+                    this.onLoad()
+
+                },
+
+                async addOrderAgain(order){
+                    const res = await orderAgainApi({id:order.id})
+                    if(res.code === 1){
+                        window.requestAnimationFrame(()=>{
+                            window.location.href= '/front/index.html'
+                        })
+                    }else{
+                        this.$notify({ type:'warning', message:res.msg});
+                    }
+                },
+                beforeClose({ position, instance }) {
+                    switch (position) {
+                        case 'left':
+                        case 'cell':
+                        case 'outside':
+                            instance.close();
+                            break;
+                        case 'right':
+                            instance.close();
+
+                            //this.deleteOrder();
+                            break;
+                    }
+                },
+
+                //删除订单
+                //     async deleteOrder(order){
+                //     let id = order.id
+                //         const res = await deleteOrderApi(id)
+                //         if(res.code === 1){
+                //
+                //             window.requestAnimationFrame(()=>{
+                //                 this.orderList=[]
+                //                 this.getList()
+                //                 //this.initData()
+                //                     })
+                //                 }else{
+                //                     this.$notify({ type:'warning', message:res.msg});
+                //                 }
+                //     },
+                deleteOrder(id) {
+                    this.$dialog.confirm(
+                                {
+                                title: '确认删除',
+                                message: '确认要删除当前订单吗？',
+                             }).then(()=>{
+                        deleteOrderApi(id).then(res => {
+                            if (res.code === 1) {
+                                this.getList();
+                                console.log("删除成功!正在调用onload")
+                                this.$notify({ type:'success', message:'删除成功'});
+
+                            } else {
+                                this.$notify({ type:'warning', message:res.msg});
+                            }
+                        }).catch(err => {
+                            this.$notify({ type:'danger', message:err});
+                        }).finally(()=>{
+                            console.log("进入finally")
+                            this.refreshing = true;
+                            this.onRefresh();
+
+                    })
+                    })
+
+
+                },
+                // deleteOrder(id){
+                //     console.log(id)
+                //     this.orderId = id;
+                //     this.$dialog.confirm(
+                //         {
+                //         title: '确认删除',
+                //         message: '确认要删除当前地址吗？',
+                //     }).then(() => {
+                //         console.log(this.orderId)
+                //         deleteOrderApi(id).then(res=>{
+                //             if(res.code === 1){
+                //                 this.onLoad();
+                //                 console.log("删除成功!正在调用onload")
+                //                 this.$notify({ type:'success', message:'删除成功'});
+                //
+                //             }else{
+                //                 this.$notify({ type:'warning', message:res.msg});
+                //             }
+                //         }).catch(() => {
+                //         });
+                //     })
+                // },
+
+                getStatus(status){
+                    let str = ''
+                    switch(status){
+                        case 1:
+                            str =  '待付款'
+                        break;
+                        case 2:
+                            str =  '正在派送'
+                        break;
+                        case 3:
+                            str =  '已派送'
+                        break;
+                        case 4:
+                            str =  '已完成'
+                        break;
+                        case 5:
+                            str =  '已取消'
+                        break;
+
+                    }
+                    return str
+                }
+            }
+        })
+        </script>
+    </body>
+</html>

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <!-- 引入样式 -->
+    <link rel="stylesheet" href="../../plugins/element-ui/index.css" />
+    <link rel="stylesheet" href="../../styles/common.css" />
+    <link rel="stylesheet" href="../../styles/page.css" />
+    <link rel="stylesheet" href="../../styles/icon2/iconfont.css" />
+
+
+    <style>
+        .blueBug {
+            color: #419eff !important;
+            position: relative;
+        }
+        .blueBug::after {
+            content: "";
+            position: absolute;
+            right: -6px;
+            height: 14px;
+            width: 0px;
+            border-right: solid 1px #ebeef5 !important;
+        }
+        .delBut {
+            color: #f56c6c !important;
+            position: relative;
+        }
+        .delBut::after {
+            content: "";
+            position: absolute;
+            right: -6px;
+            height: 14px;
+            width: 0px;
+            border-right: solid 1px #ebeef5 !important;
+
+        }
+        .card-icon-container {
+            display: inline-block;
+            font-size: 3rem;
+        }
+        .card-desc {
+            font-weight: bold;
+            float: right;
+        }
+        .card-title {
+            margin-top: 0.3rem;
+            line-height: 18px;
+            color: rgba(0, 0, 0, 0.45);
+            font-size: 1rem;
+        }
+        .card-count {
+            margin-top: 0.75rem;
+            color: #666;
+            font-size: 1.25rem;
+        }
+        .echarts {
+            width: 100%;
+            height: 100%;
+        }
+        .e-title {
+            font-size: 13px;
+            color: #202a34;
+            font-weight: 700;
+        }
+        .box-card {
+            width: 380px;
+        }
+        .text {
+            font-size: 14px;
+        }
+
+        .item {
+            padding: 18px 0;
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard-container" id="food-app">
+    <div class="container">
+
+        <el-row :gutter="20">
+            <el-col :span="6">
+                <el-card shadow="always" class="box-card">
+                    <div class="card-icon-container">
+                        <i class="iconfont el-icon-myfangwenliang" style="color: #40C9C6"></i>
+                    </div>
+                    <div class="card-desc">
+                        <div class="card-title">今日订单量</div>
+                        <div class="card-count">123</div>
+                    </div>
+                </el-card>
+            </el-col>
+            <el-col :span="6">
+                <el-card shadow="always" class="box-card">
+                    <div class="card-icon-container">
+                        <i class="iconfont el-icon-myfangwenliang" style="color: #36A3F7"></i>
+                    </div>
+                    <div class="card-desc">
+                        <div class="card-title">昨日订单量</div>
+                        <div class="card-count">123</div>
+                    </div>
+                </el-card>
+            </el-col>
+            <el-col :span="6">
+                <el-card shadow="always" class="box-card">
+                    <div class="card-icon-container">
+                        <i class="iconfont el-icon-myuser" style="color: #34BFA3"></i>
+                    </div>
+                    <div class="card-desc">
+                        <div class="card-title">用户数量</div>
+                        <div class="card-count">123</div>
+                    </div>
+                </el-card>
+            </el-col>
+            <el-col :span="6">
+                <el-card shadow="always" class="box-card">
+                    <div class="card-icon-container">
+                        <i class="iconfont el-icon-myfangwenliang" style="color: #F4516C"></i>
+                    </div>
+                    <div class="card-desc">
+                        <div class="card-title">员工数量</div>
+                        <div class="card-count">123</div>
+                    </div>
+                </el-card>
+            </el-col>
+        </el-row>
+        <el-card style="margin-top:1.25rem">
+            <div class="e-title">一周流水统计</div>
+            <div id="main" style="height:350px">
+            </div>
+        </el-card>
+        <el-row :gutter="30" style="margin-top:1.25rem">
+            <!-- 文章浏览量排行 -->
+            <el-col :span="16">
+                <el-card>
+                    <div class="e-title">一周订单统计</div>
+                    <div style="height:350px">
+                    </div>
+                </el-card>
+            </el-col>
+            <!-- 分类数据统计 -->
+            <el-col :span="8">
+                <el-card>
+                    <div class="e-title">热卖菜品统计</div>
+                    <div style="height:350px">
+                    </div>
+                </el-card>
+            </el-col>
+        </el-row>
+    </div>
+</div>
+<!-- 开发环境版本，包含了有帮助的命令行警告 -->
+<script src="../../plugins/vue/vue.js"></script>
+<!-- 引入组件库 -->
+<script src="../../plugins/element-ui/index.js"></script>
+<!-- 引入axios -->
+<script src="../../plugins/axios/axios.min.js"></script>
+<script src="../../js/request.js"></script>
+<script src="../../api/food.js"></script>
+<script src="../../plugins/echarts/echarts.js"></script>
+
+<script>
+
+    var app = new Vue({
+        el: '#food-app',
+        data() {
+            return {
+                QiNiuYunUrl:'http://rafqqxzvc.hn-bkt.clouddn.com/',
+                input: '',
+                counts: 0,
+                page: 1,
+                pageSize: 10,
+                tableData : [],
+                dishState : '',
+                checkList: []
+            }
+        },
+        computed: {},
+        created() {
+
+        },
+        mounted() {
+            this.initEcharts()
+
+        },
+        methods: {
+            initEcharts(){
+                var myChart = echarts.init(document.getElementById('main'));
+
+                var option = {
+                    xAxis: {
+                        type: 'category',
+                        data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+                    },
+                    yAxis: {
+                        type: 'value'
+                    },
+                    series: [
+                        {
+                            data: [820, 932, 901, 934, 1290, 1330, 1320],
+                            type: 'line',
+                            smooth: true
+                        }
+                    ],
+                };
+                myChart.setOption(option);
+            },
+
+
+
+
+        }
+
+    })
+</script>
+
+</body>
+</html>

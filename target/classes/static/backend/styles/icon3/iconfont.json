@@ -1,0 +1,23 @@
+{
+  "id": "",
+  "name": "",
+  "font_family": "iconfont",
+  "css_prefix_text": "icon-",
+  "description": "",
+  "glyphs": [
+    {
+      "icon_id": "2076329",
+      "name": "会员",
+      "font_class": "huiyuan",
+      "unicode": "e8a6",
+      "unicode_decimal": 59558
+    },
+    {
+      "icon_id": "26813561",
+      "name": "营业总览",
+      "font_class": "yingyezonglan",
+      "unicode": "e61e",
+      "unicode_decimal": 58910
+    }
+  ]
+}

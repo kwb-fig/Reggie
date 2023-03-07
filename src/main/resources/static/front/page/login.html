@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <!-- 上述3个meta标签*必须*放在最前面，任何其他内容都*必须*跟随其后！ -->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0,user-scalable=no,minimal-ui">
+        <title>美食元素</title>
+        <script src="../../backend/plugins/jquery/dist/jquery.min.js"></script>
+
+        <link rel="icon" href="./../images/favico.ico">
+        <!--不同屏幕尺寸根字体设置-->
+        <script src="./../js/base.js"></script>
+        <!--element-ui的样式-->
+        <link rel="stylesheet" href="../../backend/plugins/element-ui/index.css" />
+        <!--引入vant样式-->
+        <link rel="stylesheet" href="../styles/vant.min.css"/>
+        <!-- 引入样式  -->
+        <link rel="stylesheet" href="../styles/index.css" />
+        <!--本页面内容的样式-->
+        <link rel="stylesheet" href="./../styles/login.css" />
+        <style>
+            .my-swipe .van-swipe-item {
+                color: #fff;
+                font-size: 20px;
+                line-height: 150px;
+                text-align: center;
+                background-color: #39a9ed;
+            }
+            .my-swipe .van-swipe-item > img{
+                width: 375px;
+            }
+        </style>
+      </head>
+
+    <body>
+
+        <div id="login" v-loading="loading" >
+            <div class="divHead">登录</div>
+
+
+
+
+            <div class="divContainer">
+
+                <el-input placeholder=" 请输入手机号码" v-model="form.phone"  maxlength='20'/></el-input>
+
+                <div class="divSplit"></div>
+
+                <el-input placeholder=" 请输入验证码" v-model="form.code"  maxlength='20'/></el-input>
+
+
+                    <span @click='getCode' v-show="show">获取验证码</span>
+                    <span v-show="!show" class="count">{{count}} s</span>
+
+
+
+
+            </div>
+            <div class="divMsg" v-if="msgFlag">手机号输入不正确，请重新输入</div>
+            <el-button type="primary" :class="{btnSubmit:1===1,btnNoPhone:!form.phone,btnPhone:form.phone}" @click="btnLogin">登录</el-button>
+<!--            <van-button  type="primary" :class="{btnSubmit:1===1,btnNoPhone:!form.phone,btnPhone:form.phone}" @click="btnLogin">登录</van-button>-->
+
+        </div>
+        <!-- 开发环境版本，包含了有帮助的命令行警告 -->
+        <script src="../../backend/plugins/vue/vue.js"></script>
+        <!-- 引入组件库 -->
+        <script src="../../backend/plugins/element-ui/index.js"></script>
+        <!-- 引入vant样式 -->
+        <script src="./../js/vant.min.js"></script>  
+        <!-- 引入axios -->
+        <script src="../../backend/plugins/axios/axios.min.js"></script>
+        <script src="./../js/request.js"></script>
+        <script src="./../api/login.js"></script>
+        <script src="./../api/user.js"></script>
+    </body>
+    <script>
+        new Vue({
+            el:"#login",
+            data(){
+                return {
+
+                    new:false,
+                    show: true,
+                    count: '',
+                    timer: null,
+                    form:{
+                        phone:'',
+                        code:''
+                    },
+                    msgFlag:false,
+                    loading:false
+                }
+            },
+            computed:{},
+            created(){},
+            mounted(){},
+            methods:{
+                getCode(){
+                    const TIME_COUNT = 60;
+                    this.form.code = ''
+                    const regex = /^(13[0-9]{9})|(15[0-9]{9})|(17[0-9]{9})|(18[0-9]{9})|(19[0-9]{9})$/;
+                    if (regex.test(this.form.phone)) {
+                        this.msgFlag = false
+                        //this.form.code = (Math.random()*1000000).toFixed(0)
+
+                        sendMsgApi({phone:this.form.phone})
+                        if (!this.timer) {
+                            this.count = TIME_COUNT;
+                            this.show = false;
+                            this.timer = setInterval(() => {
+                                if (this.count > 0 && this.count <= TIME_COUNT) {
+                                    this.count--;
+                                } else {
+                                    this.show = true;
+                                    clearInterval(this.timer);
+                                    this.timer = null;
+                                }
+                            }, 1000)
+                        }
+                    }else{
+                        this.msgFlag = true
+                    }
+                },
+                // async isNew(){
+                //    const res = await userInfoApi(this.form.phone)
+                //     if(res.code === 1){
+                //         if(res.data.name == null){
+                //             this.new = true;
+                //             window.requestAnimationFrame(()=>{
+                //                 window.location.href= '/front/page/login-editUser.html'
+                //             })
+                //         }
+                //     }else{
+                //         this.$notify({ type:'warning', message:res.msg});
+                //     }
+                // },
+                async btnLogin(){
+                    if(this.form.phone && this.form.code){
+                        this.loading = true
+                        const res = await loginApi(this.form)
+                        this.loading = false
+                        if(res.code === 1){
+                            localStorage.setItem('token',res.data.token)
+                            localStorage.setItem('userInfo',JSON.stringify(res.data.user))
+                            sessionStorage.setItem("userPhone",this.form.phone)
+                            //await this.isNew()
+                            // if (this.new == false){
+                            //     window.requestAnimationFrame(()=>{
+                            //         window.location.href= '/front/index.html'
+                            //     })
+                            // }
+                            window.requestAnimationFrame(()=>{
+                                window.location.href= '/front/index.html'
+                            })
+                        }else{
+                            this.$notify({ type:'warning', message:res.msg});
+                        }
+                    }else{
+                        this.$notify({ type:'warning', message:'请输入手机号码'});
+                    }
+                }
+            }
+        })
+    </script>
+
+</html>
