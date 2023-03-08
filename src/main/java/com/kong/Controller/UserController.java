@@ -10,12 +10,14 @@ import com.kong.entity.User;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @Slf4j
@@ -24,6 +26,9 @@ public class UserController {
 
     @Autowired
     UserService userService;
+
+    @Autowired
+    RedisTemplate redisTemplate;
 
     @PostMapping("/sendMsg")
     public R<String> sendMsg(@RequestBody User user, HttpSession session){
@@ -39,7 +44,9 @@ public class UserController {
             //调用阿里云提供的短信服务API完成短信发送
             //SMSUtils.sendMessage("瑞吉外卖","",phone,code);
 
-            session.setAttribute(phone,code);
+            //session.setAttribute(phone,code);
+            //将验证码存入redis中
+            redisTemplate.opsForValue().set(phone,code,5, TimeUnit.MINUTES);
             return R.success("短信发送成功");
         }
         return R.error("短信发送失败");
@@ -52,7 +59,10 @@ public class UserController {
 
         String code = map.get("code").toString();
 
-        Object codeInSession = session.getAttribute(phone);
+        //Object codeInSession = session.getAttribute(phone);
+
+        //从redis中取出验证码
+        Object codeInSession=redisTemplate.opsForValue().get(phone);
 
         if(codeInSession!=null && codeInSession.equals(code)){
 
@@ -70,6 +80,8 @@ public class UserController {
                 userService.save(user);
             }
             session.setAttribute("user",user.getId());
+            //如果登录成功,就将验证码移除
+            redisTemplate.delete(phone);
             return R.success(user);
         }
         return R.error("登陆失败");

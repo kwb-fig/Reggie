@@ -16,9 +16,11 @@ import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @Slf4j
@@ -33,9 +35,14 @@ public class DishController {
     @Autowired
     private CategoryService categoryService;
 
+    @Autowired
+    RedisTemplate redisTemplate;
+
 
     @PostMapping
     public R<String> save(@RequestBody DishDto dishDto){
+        Set keys=redisTemplate.keys("dishId*");
+        redisTemplate.delete(keys);
         dishService.saveWithFlavor(dishDto);
         return R.success("添加成功");
     }
@@ -98,12 +105,16 @@ public class DishController {
     @PutMapping
     public R<String> update(@RequestBody DishDto dishDto){
         dishService.updateWithFlavor(dishDto);
+        Set keys=redisTemplate.keys("dishId*");
+        redisTemplate.delete(keys);
         return R.success("修改菜品信息成功");
     }
 
     //删除菜品信息
     @DeleteMapping
     public R<String> delete(@RequestParam Long[] id){
+        Set keys=redisTemplate.keys("dishId*");
+        redisTemplate.delete(keys);
         for (Long aLong : id) {
             dishService.delete(aLong);
         }
@@ -113,6 +124,8 @@ public class DishController {
     //修改菜品状态信息
     @PostMapping(value = {"/status/0","/status/1"})
     public R<String > updateStatusById(@RequestParam Long[] id){
+        Set keys=redisTemplate.keys("dishId*");
+        redisTemplate.delete(keys);
         for (Long aLong : id) {
             dishService.updateStatus(aLong);
         }
@@ -122,6 +135,15 @@ public class DishController {
     //添加套餐中展示要新增的菜品
     @GetMapping("/list")
     public R<List<DishDto>> getByCategoryId(Dish dish){
+        List<DishDto> dishDtoList=null;
+
+        String key="dishId"+dish.getCategoryId()+"_1";
+
+        //先从redis中查询菜品数据,如果有，就直接返回
+        dishDtoList =(List<DishDto>) redisTemplate.opsForValue().get(key);
+        if(dishDtoList!=null){
+            return R.success(dishDtoList);
+        }
 
         LambdaQueryWrapper<Dish> lambdaQueryWrapper=new LambdaQueryWrapper<>();
 
@@ -137,7 +159,7 @@ public class DishController {
         //拓展Dish
 
 
-        List<DishDto> dishDtoList=new ArrayList<>();
+        dishDtoList=new ArrayList<>();
 
         for (Dish dish1 : dishList) {
             DishDto dishDto = new DishDto();
@@ -157,6 +179,8 @@ public class DishController {
 
             dishDtoList.add(dishDto);
         }
+        //redis没有数据，则查询数据库，并将数据存入redis
+        redisTemplate.opsForValue().set(key,dishDtoList,60, TimeUnit.MINUTES);
 
         return R.success(dishDtoList);
     }
